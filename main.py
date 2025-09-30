@@ -29,8 +29,8 @@ def main():
     usage_metadata = dict(response.usage_metadata)
     if '--verbose' in sys.argv:
         print(f"User prompt: {user_prompt}")
-    print(f"Prompt tokens: {usage_metadata['prompt_token_count']}")
-    print(f"Response tokens: {usage_metadata['candidates_token_count']}")
+        print(f"Prompt tokens: {usage_metadata['prompt_token_count']}")
+        print(f"Response tokens: {usage_metadata['candidates_token_count']}")
 
 
 if __name__ == "__main__":
