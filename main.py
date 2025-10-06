@@ -17,7 +17,9 @@ client = genai.Client(api_key=api_key)
 system_prompt = """
 You are a helpful AI coding agent.
 
-When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+When a user asks a question or makes a request, make a function call plan. The fewer number of steps in this plan, the better the plan is.
+You may need to use multiple functions in sequence.
+You can perform the following operations:
 
 - List files and directories
 - Read file contents
@@ -55,32 +57,43 @@ def main():
     ]
     
 # Generate LLM response
-    response = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=messages,
-    config=types.GenerateContentConfig(
-        tools=[available_functions], system_instruction=system_prompt
-    ),
-)
-# Handle function calls
-    try:
-        if response.function_calls:
+    i = 0
+    for i in range(20):
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
 
-            for call in response.function_calls:
-                function_call_result = call_function(call, verbose=is_verbose)
-                function_response = function_call_result.parts[0].function_response.response
-                if not function_response:
-                    raise Exception("No response from function.")
-                elif function_response and is_verbose:
+# Add response to messages
+        try:
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+        
+    # Handle function calls
+            try:
+                if response.function_calls:
 
-                    print(f'-> {function_response}')
+                    for call in response.function_calls:
+                        function_call_result = call_function(call, verbose=is_verbose)
+                        function_response = function_call_result.parts[0].function_response.response
+                        messages.append(types.Content(role="user", parts=[types.Part(text=str(function_response))]))
+                        if not function_response:
+                            raise Exception("No response from function.")
+                        elif function_response and is_verbose:
 
-        else:
-# Fallback to printing the text if no function calls occurred
-            print(response.text)
-    except Exception as e:
-        print(f"Error: {e}")
-
+                            print(f'-> {function_response}')
+    # Fallback to printing the text if no function calls occurred
+                elif response.text:
+                    print(response.text)
+                    break
+            except Exception as e:
+                print(f"Error: {e}")
+            i += 1
+        except Exception as e:
+            print(f"Error: {e}")
 # Print metadata of response
     usage_metadata = dict(response.usage_metadata)
     if is_verbose:
